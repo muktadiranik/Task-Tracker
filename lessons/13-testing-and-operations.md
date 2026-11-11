@@ -39,7 +39,7 @@ Copy [`test/workspace.test.js`](../test/workspace.test.js) into the practice pro
 npm test
 ```
 
-The HTTP-only tests exercise validation and a simulated database failure. With `MONGODB_TEST_URI` unset, expect four passing tests and two skipped integration tests. Set the test URI as described in lesson 6 and expect six passing tests. The added integration test signs in two accounts and proves one cannot read, update, or delete the other's tasks. It also checks paging, counts, logout, and expiration against a real database.
+The HTTP-only tests exercise validation and a simulated database failure. At the end of this lesson, expect four passing tests and two skipped integration tests with `MONGODB_TEST_URI` unset. Set the test URI as described in lesson 6 and expect six passing tests. The added integration test signs in two accounts and proves one cannot read, update, or delete the other's tasks. It also checks paging, counts, logout, and expiration against a real database. The finished workspace includes the [capstone's additional test](14-shared-projects.md#test-all-three-roles).
 
 Run the workspace tests directly for a narrower feedback loop. The built-in coverage report shows which source lines the selected tests ran.
 
@@ -57,7 +57,7 @@ Stop the current API first. For day-to-day changes, start with `node --watch --e
 node --inspect --env-file-if-exists=.env src/server.js
 ```
 
-Attach a debugger to the local inspector on port 9229. Set a breakpoint in `listPrivateTasks()`, then call the list endpoint with `limit=1`. Inspect `filter`, `pageSize`, and `items` as you step through. Keep the inspector bound to loopback. For performance debugging, record a profile with `--cpu-prof` during a local test run and open the resulting `.cpuprofile` in a debugger. [Node.js CLI options](https://nodejs.org/api/cli.html) · [Node.js debugger](https://nodejs.org/api/debugger.html)
+Attach a debugger to the local inspector on port 9229. Set a breakpoint in `listTaskPage()`, then call the list endpoint with `limit=1`. Inspect `filter`, `pageSize`, and `items` as you step through. Keep the inspector bound to loopback. For performance debugging, record a profile with `--cpu-prof` during a local test run and open the resulting `.cpuprofile` in a debugger. [Node.js CLI options](https://nodejs.org/api/cli.html) · [Node.js debugger](https://nodejs.org/api/debugger.html)
 
 ## Run the API under a Linux process manager
 
@@ -95,3 +95,5 @@ curl -i -w '\n' http://127.0.0.1:3000/ready
 ```
 
 Expect `200` from both routes and `{"status":"ready"}` from `/ready`. If you are using the local tutorial Docker container, stop MongoDB temporarily as in lesson 5. Repeat the requests and expect `200` from liveness and `503` with `{"error":"Database unavailable."}` from readiness. Restart MongoDB and check that readiness returns `200` again.
+
+[Continue to the Shared Projects capstone](14-shared-projects.md)

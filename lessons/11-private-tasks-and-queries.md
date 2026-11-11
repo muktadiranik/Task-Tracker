@@ -4,11 +4,11 @@ Give each account its own tasks. Reuse the CRUD handlers from lesson 4, then add
 
 ## Update `src/tasks.js` to reuse CRUD
 
-Replace your file with [`src/tasks.js`](../src/tasks.js). The router now accepts three options.
+Replace your file with [`src/tasks.js`](../src/tasks.js). Pass these options when mounting the private router.
 
 | Option | Basic tutorial route | Private route |
 | --- | --- | --- |
-| `basePath` | `/api/tasks` | `/api/me/tasks` |
+| `basePath(res)` | Returns `/api/tasks` | Returns `/api/me/tasks` |
 | `taskFilter(res)` | Empty filter | `{ ownerId: res.locals.session.userId }` |
 | `listTasks()` | Array ordered by creation time | Filtered page with a continuation cursor |
 
@@ -24,7 +24,7 @@ A task belonging to a different user produces the same `404` as a missing task. 
 
 ## Create `src/task-queries.js`
 
-Copy [`src/task-queries.js`](../src/task-queries.js). `listPrivateTasks()` validates query parameters before building a MongoDB filter. It allows `completed=true` or `completed=false`, a `limit` from 1 to 100 with a default of 20, and a `before` cursor that is a task ID. Keep the same completion filter as you follow the cursor.
+Copy [`src/task-queries.js`](../src/task-queries.js). `listTaskPage()` validates query parameters before building a MongoDB filter. It allows `completed=true` or `completed=false`, a `limit` from 1 to 100 with a default of 20, and a `before` cursor that is a task ID. Keep the same completion filter as you follow the cursor.
 
 The endpoint sorts by descending `_id`. The next page uses `_id: { $lt: previousCursor }` to pick up after the last item you saw. It reads one extra result to determine whether there is another page. The response contains `{ items, nextCursor }`, and `nextCursor` is `null` on the last page. This ordering uses a unique key and represents approximate creation order. Pages are live queries, so concurrent edits or deletions can affect what later pages contain.
 
@@ -32,7 +32,53 @@ The endpoint sorts by descending `_id`. The next page uses `_id: { $lt: previous
 
 ## Replace `src/workspace.js` to mount the private router
 
-Copy the full [`src/workspace.js`](../src/workspace.js). Notice that every request under `/me` passes through `auth.requireSession` before it can reach the task or stats handlers. The task index on `ownerId` and `_id` supports the unfiltered list. A second **compound index** adds `completed` between those fields so MongoDB can narrow results by status and still return them in cursor order. Indexes improve reads and take storage and write work to maintain. [MongoDB driver guide to indexes](https://www.mongodb.com/docs/drivers/node/current/indexes/)
+Use this version of `src/workspace.js` for the private-task stage.
+
+```js
+import { Router } from "express";
+import { createAuth } from "./auth.js";
+import { listTaskPage, taskStats } from "./task-queries.js";
+import { createTaskRouter } from "./tasks.js";
+
+export async function createWorkspace(db) {
+  const users = db.collection("users");
+  const sessions = db.collection("sessions");
+  const tasks = db.collection("private_tasks");
+
+  await Promise.all([
+    users.createIndex({ email: 1 }, { unique: true }),
+    sessions.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+    tasks.createIndexes([
+      { key: { ownerId: 1, _id: -1 } },
+      { key: { ownerId: 1, completed: 1, _id: -1 } },
+    ]),
+  ]);
+
+  const auth = createAuth(users, sessions);
+  const router = Router();
+  const privateRoutes = Router();
+
+  router.use(["/auth", "/me"], (_req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
+  router.use("/auth", auth.router);
+  router.use("/me", auth.requireSession, privateRoutes);
+
+  privateRoutes.get("/stats", async (_req, res) => {
+    res.json(await taskStats(tasks, res.locals.session.userId));
+  });
+  privateRoutes.use("/tasks", createTaskRouter(tasks, {
+    basePath: () => "/api/me/tasks",
+    taskFilter: (res) => ({ ownerId: res.locals.session.userId }),
+    listTasks: listTaskPage,
+  }));
+
+  return router;
+}
+```
+
+Every request under `/me` passes through `auth.requireSession` before it can reach the task or stats handlers. The task index on `ownerId` and `_id` supports the unfiltered list. A second **compound index** adds `completed` between those fields so MongoDB can narrow results by status and still return them in cursor order. Indexes improve reads and take storage and write work to maintain. [MongoDB driver guide to indexes](https://www.mongodb.com/docs/drivers/node/current/indexes/)
 
 ## Check private tasks, a filtered page, and stats
 

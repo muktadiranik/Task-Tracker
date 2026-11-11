@@ -1,7 +1,7 @@
 import { ObjectId } from "mongodb";
 import { HttpError } from "./errors.js";
 
-export async function listPrivateTasks(tasks, { completed, limit = "20", before }, scope) {
+export async function listTaskPage(tasks, { completed, limit = "20", before }, scope) {
   if (typeof limit !== "string" || !/^(?:[1-9][0-9]?|100)$/.test(limit)) {
     throw new HttpError(400, "Limit must be an integer from 1 to 100.");
   }

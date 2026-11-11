@@ -1,6 +1,6 @@
 # Learn Node.js by building a Task Tracker API
 
-Start with basic JavaScript and build an Express API backed by MongoDB. Then work with Node.js modules, the event loop, worker threads, native HTTP, and streams. The final app adds accounts, private tasks, paginated queries, an export CLI, and a readiness probe.
+Start with basic JavaScript and build an Express API backed by MongoDB. Then work with Node.js modules, the event loop, worker threads, native HTTP, and streams. The final app adds accounts, private tasks, shared projects with task assignments, an export CLI, and a readiness probe.
 
 ## Build your first API
 
@@ -23,8 +23,9 @@ Start with basic JavaScript and build an Express API backed by MongoDB. Then wor
 11. [Scope tasks by owner, paginate results, and calculate stats](lessons/11-private-tasks-and-queries.md)
 12. [Stream task exports with a Node.js CLI](lessons/12-streaming-export.md)
 13. [Test, debug, and run the service](lessons/13-testing-and-operations.md)
+14. [Build the Shared Projects capstone](lessons/14-shared-projects.md)
 
-This workspace contains the completed app. Build along in a separate practice folder to try each lesson in order. Lessons 1–6 build the basic API, and lessons 10–13 extend it.
+This workspace contains the completed app. Build along in a separate practice folder to try each lesson in order. Lessons 1–6 build the basic API, and lessons 10–14 extend it.
 
 ## Run the finished API
 
@@ -65,5 +66,11 @@ The advanced routes use separate account and task collections. Keep the basic `/
 | GET, POST | `/api/me/tasks` | List or create tasks for the signed-in user |
 | GET, PATCH, DELETE | `/api/me/tasks/:id` | Read, update, or delete one owned task |
 | GET | `/api/me/stats` | Count the signed-in user's completed and pending tasks |
+| GET, POST | `/api/projects` | List the signed-in user's projects or create one |
+| GET | `/api/projects/:projectId` | Read a project and its roster |
+| PUT | `/api/projects/:projectId/members/:userId` | Project owners add an existing account as a member |
+| GET, POST | `/api/projects/:projectId/tasks` | List or create tasks within the project |
+| GET, PATCH, DELETE | `/api/projects/:projectId/tasks/:id` | Read or update a project task, or delete it as the owner |
+| PUT | `/api/projects/:projectId/tasks/:id/assignee` | Assign a task to a project participant or clear its assignment |
 
-Run `npm test` for the HTTP checks. Set `MONGODB_TEST_URI` to a local or dedicated test deployment to also run the MongoDB tests. Each creates and drops a uniquely named database. See [lesson 13](lessons/13-testing-and-operations.md) for test commands and debugging.
+Run `npm test` for the HTTP checks. Set `MONGODB_TEST_URI` to a local or dedicated test deployment to also run the MongoDB tests. Each creates and drops a uniquely named database. See [lesson 13](lessons/13-testing-and-operations.md) for debugging and [lesson 14](lessons/14-shared-projects.md#test-all-three-roles) for the project permission tests.
