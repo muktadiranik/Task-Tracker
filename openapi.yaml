@@ -1,0 +1,1350 @@
+openapi: "3.0.3"
+info:
+  title: Task Tracker API
+  version: "1.0.0"
+  description: "Register if needed, sign in with POST /api/auth/login, and paste the returned token into Authorize to try the private task and project endpoints."
+servers:
+  - url: /
+tags:
+  - name: Health
+  - name: Authentication
+  - name: Tutorial tasks
+  - name: Private tasks
+  - name: Projects
+  - name: Project tasks
+  - name: Collaboration
+paths:
+  "/health":
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Check HTTP server liveness
+      responses:
+        "200":
+          description: The HTTP server is running.
+          content:
+            "application/json":
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+              example:
+                status: ok
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/ready":
+    get:
+      tags: [Health]
+      operationId: getReadiness
+      summary: Check MongoDB readiness
+      responses:
+        "200":
+          description: MongoDB is responding.
+          content:
+            "application/json":
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ready]
+              example:
+                status: ready
+        "500": { $ref: '#/components/responses/ServerError' }
+        "503": { $ref: '#/components/responses/Unavailable' }
+  "/api/auth/register":
+    post:
+      tags: [Authentication]
+      operationId: register
+      summary: Register an account
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/Credentials' }
+            example:
+              email: "learner@example.test"
+              password: local tutorial passphrase
+      responses:
+        "201":
+          description: Account created.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Account' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/auth/login":
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Sign in and get a session token
+      description: Copy token from the response into Authorize. Swagger UI adds the Bearer prefix.
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/Credentials' }
+            example:
+              email: "learner@example.test"
+              password: local tutorial passphrase
+      responses:
+        "200":
+          description: Bearer token and expiration time.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Session' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/BadCredentials' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/auth/logout":
+    post:
+      tags: [Authentication]
+      operationId: logout
+      summary: Revoke the current session
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Session revoked.
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/tasks":
+    get:
+      tags: [Tutorial tasks]
+      operationId: listTutorialTasks
+      summary: List tutorial tasks
+      responses:
+        "200":
+          description: Tasks ordered by creation time.
+          content:
+            "application/json":
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Task' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Tutorial tasks]
+      operationId: createTutorialTask
+      summary: Create a tutorial task
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/TaskCreate' }
+            example:
+              title: Write release notes
+      responses:
+        "201":
+          description: Task created.
+          headers:
+            Location:
+              description: Relative URL of the new resource.
+              schema:
+                type: string
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Task' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/tasks/{taskId}":
+    parameters:
+      - { $ref: '#/components/parameters/TaskId' }
+    get:
+      tags: [Tutorial tasks]
+      operationId: getTutorialTask
+      summary: Get a tutorial task
+      responses:
+        "200":
+          description: Task found.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Task' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    patch:
+      tags: [Tutorial tasks]
+      operationId: updateTutorialTask
+      summary: Update a tutorial task
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/TaskPatch' }
+            example:
+              completed: true
+      responses:
+        "200":
+          description: Task updated.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Task' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Tutorial tasks]
+      operationId: deleteTutorialTask
+      summary: Delete a tutorial task
+      responses:
+        "204":
+          description: Task deleted.
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/me":
+    get:
+      tags: [Private tasks]
+      operationId: getCurrentAccount
+      summary: Get your account
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current account.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Account' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/me/stats":
+    get:
+      tags: [Private tasks]
+      operationId: getPrivateTaskStats
+      summary: Get your private task counts
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Private task counts.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/PrivateStats' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/me/tasks":
+    get:
+      tags: [Private tasks]
+      operationId: listPrivateTasks
+      summary: List your private tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: '#/components/parameters/Completed' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Before' }
+      responses:
+        "200":
+          description: Page of private tasks.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/PrivateTaskPage' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Private tasks]
+      operationId: createPrivateTask
+      summary: Create a private task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/TaskCreate' }
+            example:
+              title: Write release notes
+      responses:
+        "201":
+          description: Task created.
+          headers:
+            Location:
+              description: Relative URL of the new resource.
+              schema:
+                type: string
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/PrivateTask' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/me/tasks/{taskId}":
+    parameters:
+      - { $ref: '#/components/parameters/TaskId' }
+    get:
+      tags: [Private tasks]
+      operationId: getPrivateTask
+      summary: Get a private task
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Task found.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/PrivateTask' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    patch:
+      tags: [Private tasks]
+      operationId: updatePrivateTask
+      summary: Update a private task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/TaskPatch' }
+            example:
+              completed: true
+      responses:
+        "200":
+          description: Task updated.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/PrivateTask' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Private tasks]
+      operationId: deletePrivateTask
+      summary: Delete a private task
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Task deleted.
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/me/project-tasks":
+    get:
+      tags: [Project tasks]
+      operationId: listMyAssignedTasks
+      summary: List your assigned tasks across active projects
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: '#/components/parameters/Completed' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Before' }
+        - { $ref: '#/components/parameters/Search' }
+        - { $ref: '#/components/parameters/Status' }
+        - { $ref: '#/components/parameters/Priority' }
+        - { $ref: '#/components/parameters/Label' }
+        - { $ref: '#/components/parameters/Assignee' }
+        - { $ref: '#/components/parameters/DueBefore' }
+        - { $ref: '#/components/parameters/Overdue' }
+        - { $ref: '#/components/parameters/Sort' }
+      responses:
+        "200":
+          description: Page of tasks assigned to the current account.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/ProjectTaskPage' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/projects":
+    get:
+      tags: [Projects]
+      operationId: listProjects
+      summary: List projects you belong to
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: '#/components/parameters/Archived' }
+      responses:
+        "200":
+          description: Matching projects.
+          content:
+            "application/json":
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Project' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Projects]
+      operationId: createProject
+      summary: Create a project
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/ProjectCreate' }
+            example:
+              name: Release plan
+              description: Ship the next version
+      responses:
+        "201":
+          description: Project created. The caller becomes its owner.
+          headers:
+            Location:
+              description: Relative URL of the new resource.
+              schema:
+                type: string
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Project' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/projects/{projectId}":
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      tags: [Projects]
+      operationId: getProject
+      summary: Get a project and its roster
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Project found.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Project' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    patch:
+      tags: [Projects]
+      operationId: updateProject
+      summary: "Edit, archive, or restore a project"
+      description: Owner only. Task and membership writes return 409 while the project is archived.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/ProjectPatch' }
+            example:
+              archived: true
+      responses:
+        "200":
+          description: Project updated.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Project' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/projects/{projectId}/stats":
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      tags: [Projects]
+      operationId: getProjectStats
+      summary: Get project task counts and overdue work
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Project task counts.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/ProjectStats' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/projects/{projectId}/members/{userId}":
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/UserId' }
+    put:
+      tags: [Projects]
+      operationId: addProjectMember
+      summary: Add an existing account to the project
+      description: Owner only. Repeating the request keeps one membership entry.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Project with the updated roster.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Project' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Projects]
+      operationId: removeProjectMember
+      summary: Remove a project member
+      description: Owner only. Removing a member revokes future access. Their task assignments remain until reassigned or cleared.
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Member removed or already absent.
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/projects/{projectId}/tasks":
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      tags: [Project tasks]
+      operationId: listProjectTasks
+      summary: Search and list project tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: '#/components/parameters/Completed' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Before' }
+        - { $ref: '#/components/parameters/Search' }
+        - { $ref: '#/components/parameters/Status' }
+        - { $ref: '#/components/parameters/Priority' }
+        - { $ref: '#/components/parameters/Label' }
+        - { $ref: '#/components/parameters/Assignee' }
+        - { $ref: '#/components/parameters/DueBefore' }
+        - { $ref: '#/components/parameters/Overdue' }
+        - { $ref: '#/components/parameters/Sort' }
+      responses:
+        "200":
+          description: Page of matching tasks. Read a single task for its comments and checklist.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/ProjectTaskPage' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Project tasks]
+      operationId: createProjectTask
+      summary: Create a project task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/ProjectTaskCreate' }
+            example:
+              title: Write release notes
+              priority: high
+              status: todo
+              labels: [release]
+      responses:
+        "201":
+          description: Task created.
+          headers:
+            Location:
+              description: Relative URL of the new resource.
+              schema:
+                type: string
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/ProjectTaskDetail' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/projects/{projectId}/tasks/{taskId}":
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/TaskId' }
+    get:
+      tags: [Project tasks]
+      operationId: getProjectTask
+      summary: Get a project task with its comments and checklist
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Task found.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/ProjectTaskDetail' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    patch:
+      tags: [Project tasks]
+      operationId: updateProjectTask
+      summary: Update a project task
+      description: "Status done sets completed to true. When both fields are supplied, they must agree. A request with only completed sets the status to done or todo."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/ProjectTaskPatch' }
+            example:
+              status: in_progress
+      responses:
+        "200":
+          description: Task updated.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/ProjectTaskDetail' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Project tasks]
+      operationId: deleteProjectTask
+      summary: Delete a project task
+      description: Owner only.
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Task deleted.
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/projects/{projectId}/tasks/{taskId}/assignee":
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/TaskId' }
+    put:
+      tags: [Project tasks]
+      operationId: assignProjectTask
+      summary: Assign a task or clear its assignment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/Assignment' }
+            example:
+              assigneeId: "507f1f77bcf86cd799439011"
+      responses:
+        "200":
+          description: Task with the updated assignment.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/ProjectTaskDetail' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/projects/{projectId}/tasks/{taskId}/comments":
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/TaskId' }
+    post:
+      tags: [Collaboration]
+      operationId: createComment
+      summary: Add a comment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/CommentInput' }
+            example:
+              text: Ready for review
+      responses:
+        "201":
+          description: Comment created.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Comment' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/projects/{projectId}/tasks/{taskId}/comments/{commentId}":
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/TaskId' }
+      - { $ref: '#/components/parameters/CommentId' }
+    patch:
+      tags: [Collaboration]
+      operationId: updateComment
+      summary: Edit your comment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/CommentInput' }
+            example:
+              text: Reviewed
+      responses:
+        "200":
+          description: Comment updated.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/Comment' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Collaboration]
+      operationId: deleteComment
+      summary: Remove a comment
+      description: The comment author or project owner can remove it.
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Comment removed.
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/projects/{projectId}/tasks/{taskId}/checklist":
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/TaskId' }
+    post:
+      tags: [Collaboration]
+      operationId: createChecklistItem
+      summary: Add a checklist item
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/TaskCreate' }
+            example:
+              title: Run integration tests
+      responses:
+        "201":
+          description: Checklist item created.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/ChecklistItem' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+  "/api/projects/{projectId}/tasks/{taskId}/checklist/{itemId}":
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/TaskId' }
+      - { $ref: '#/components/parameters/ItemId' }
+    patch:
+      tags: [Collaboration]
+      operationId: updateChecklistItem
+      summary: Edit or complete a checklist item
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: { $ref: '#/components/schemas/TaskPatch' }
+            example:
+              completed: true
+      responses:
+        "200":
+          description: Checklist item updated.
+          content:
+            "application/json":
+              schema: { $ref: '#/components/schemas/ChecklistItem' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "413": { $ref: '#/components/responses/PayloadTooLarge' }
+        "500": { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Collaboration]
+      operationId: deleteChecklistItem
+      summary: Remove a checklist item
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Checklist item removed.
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "500": { $ref: '#/components/responses/ServerError' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Paste the token returned by POST /api/auth/login. Swagger UI adds the Bearer prefix.
+  parameters:
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/ObjectId' }
+      description: Task document ID.
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/ObjectId' }
+      description: Project document ID.
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/ObjectId' }
+      description: ID of the account to add or remove.
+    CommentId:
+      name: commentId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/ObjectId' }
+      description: Comment ID.
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/ObjectId' }
+      description: Checklist item ID.
+    Completed:
+      name: completed
+      in: query
+      schema:
+        type: boolean
+      description: Filter by completion.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Maximum number of tasks in the page.
+    Before:
+      name: before
+      in: query
+      schema: { $ref: '#/components/schemas/ObjectId' }
+      description: "Pass the previous page’s nextCursor and keep the same filters and sort order."
+    Search:
+      name: q
+      in: query
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 120
+      description: "Search titles and descriptions for literal text, ignoring case."
+    Status:
+      name: status
+      in: query
+      schema: { $ref: '#/components/schemas/TaskStatus' }
+      description: Filter by workflow status.
+    Priority:
+      name: priority
+      in: query
+      schema: { $ref: '#/components/schemas/Priority' }
+      description: Filter by priority.
+    Label:
+      name: label
+      in: query
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 30
+      description: Filter by label. Matching ignores case and surrounding spaces.
+    Assignee:
+      name: assigneeId
+      in: query
+      schema:
+        oneOf:
+          - { $ref: '#/components/schemas/ObjectId' }
+          - type: string
+            enum: [unassigned]
+      description: Filter by assignee ID or unassigned.
+    DueBefore:
+      name: dueBefore
+      in: query
+      schema:
+        type: string
+        format: date
+      description: Return tasks due before this date.
+    Overdue:
+      name: overdue
+      in: query
+      schema:
+        type: boolean
+      description: Filter by whether an unfinished task was due before today in UTC.
+    Sort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum: [newest, oldest]
+        default: newest
+      description: Order by task ID.
+    Archived:
+      name: archived
+      in: query
+      schema:
+        type: boolean
+        default: false
+      description: Return archived projects when true and active projects when false.
+  responses:
+    BadRequest:
+      description: "Invalid input, path parameter, query parameter, or JSON body."
+      content:
+        "application/json":
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: "Missing, expired, revoked, or invalid bearer session token."
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+            example: Bearer
+      content:
+        "application/json":
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: Supply a valid session token.
+    BadCredentials:
+      description: Email or password is incorrect.
+      content:
+        "application/json":
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: Email or password is incorrect.
+    Forbidden:
+      description: The caller lacks permission for this action.
+      content:
+        "application/json":
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: "The resource does not exist or is outside the caller’s access."
+      content:
+        "application/json":
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: The requested change conflicts with existing data or project state.
+      content:
+        "application/json":
+          schema: { $ref: '#/components/schemas/Error' }
+    PayloadTooLarge:
+      description: The JSON request body exceeds 16 KB.
+      content:
+        "application/json":
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Unexpected server error.
+      content:
+        "application/json":
+          schema: { $ref: '#/components/schemas/Error' }
+    Unavailable:
+      description: MongoDB is unavailable.
+      content:
+        "application/json":
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: Database unavailable.
+  schemas:
+    ObjectId:
+      type: string
+      pattern: "^[0-9a-fA-F]{24}$"
+      example: "507f1f77bcf86cd799439011"
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    Credentials:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          minLength: 12
+          maxLength: 128
+    Account:
+      type: object
+      required: [_id, email]
+      properties:
+        _id: { $ref: '#/components/schemas/ObjectId' }
+        email:
+          type: string
+          format: email
+    Session:
+      type: object
+      required: [token, expiresAt]
+      properties:
+        token:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{43}$"
+          description: Opaque session token valid for 24 hours unless revoked by logout.
+        expiresAt:
+          type: string
+          format: date-time
+    TaskCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        completed:
+          type: boolean
+      additionalProperties: false
+    TaskPatch:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        completed:
+          type: boolean
+      additionalProperties: false
+      minProperties: 1
+    Task:
+      type: object
+      required: [_id, title, completed, createdAt, updatedAt]
+      properties:
+        _id: { $ref: '#/components/schemas/ObjectId' }
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        completed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    PrivateTask:
+      allOf:
+        - { $ref: '#/components/schemas/Task' }
+        - type: object
+          required: [ownerId]
+          properties:
+            ownerId: { $ref: '#/components/schemas/ObjectId' }
+    TaskStatus:
+      type: string
+      enum: [todo, in_progress, blocked, done]
+    Priority:
+      type: string
+      enum: [low, medium, high, urgent]
+    ProjectTaskCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        completed:
+          type: boolean
+        description:
+          type: string
+          maxLength: 2000
+          default: ""
+        priority: { $ref: '#/components/schemas/Priority' }
+        status: { $ref: '#/components/schemas/TaskStatus' }
+        dueOn:
+          type: string
+          format: date
+          nullable: true
+          description: "Use a calendar date in YYYY-MM-DD format, or null to clear it."
+        labels:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 30
+          maxItems: 10
+          description: "Labels are trimmed, lowercased, and deduplicated."
+      additionalProperties: false
+      description: "Status done sets completed to true. When both fields are supplied, they must agree."
+    ProjectTaskPatch:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        completed:
+          type: boolean
+        description:
+          type: string
+          maxLength: 2000
+          default: ""
+        priority: { $ref: '#/components/schemas/Priority' }
+        status: { $ref: '#/components/schemas/TaskStatus' }
+        dueOn:
+          type: string
+          format: date
+          nullable: true
+          description: "Use a calendar date in YYYY-MM-DD format, or null to clear it."
+        labels:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 30
+          maxItems: 10
+          description: "Labels are trimmed, lowercased, and deduplicated."
+      additionalProperties: false
+      minProperties: 1
+    ProjectTask:
+      allOf:
+        - { $ref: '#/components/schemas/Task' }
+        - type: object
+          required: [projectId, description, priority, status, dueOn, labels]
+          properties:
+            projectId: { $ref: '#/components/schemas/ObjectId' }
+            assigneeId: { $ref: '#/components/schemas/ObjectId' }
+            description:
+              type: string
+              maxLength: 2000
+              default: ""
+            priority: { $ref: '#/components/schemas/Priority' }
+            status: { $ref: '#/components/schemas/TaskStatus' }
+            dueOn:
+              type: string
+              format: date
+              nullable: true
+              description: "Use a calendar date in YYYY-MM-DD format, or null to clear it."
+            labels:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 30
+              maxItems: 10
+              description: "Labels are trimmed, lowercased, and deduplicated."
+    ProjectTaskDetail:
+      allOf:
+        - { $ref: '#/components/schemas/ProjectTask' }
+        - type: object
+          properties:
+            comments:
+              type: array
+              items: { $ref: '#/components/schemas/Comment' }
+              maxItems: 100
+            checklist:
+              type: array
+              items: { $ref: '#/components/schemas/ChecklistItem' }
+              maxItems: 50
+    PrivateTaskPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PrivateTask' }
+        nextCursor:
+          type: string
+          nullable: true
+          description: Task ID to pass as before. Null marks the last page.
+    ProjectTaskPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectTask' }
+        nextCursor:
+          type: string
+          nullable: true
+          description: Task ID to pass as before. Null marks the last page.
+    PrivateStats:
+      type: object
+      required: [total, completed, pending]
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        completed:
+          type: integer
+          minimum: 0
+        pending:
+          type: integer
+          minimum: 0
+    ProjectStats:
+      type: object
+      required: [total, completed, overdue, byStatus]
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        completed:
+          type: integer
+          minimum: 0
+        overdue:
+          type: integer
+          minimum: 0
+        byStatus:
+          type: object
+          required: [todo, in_progress, blocked, done]
+          properties:
+            todo:
+              type: integer
+              minimum: 0
+            in_progress:
+              type: integer
+              minimum: 0
+            blocked:
+              type: integer
+              minimum: 0
+            done:
+              type: integer
+              minimum: 0
+    ProjectCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 2000
+    ProjectPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 2000
+        archived:
+          type: boolean
+      minProperties: 1
+    Project:
+      type: object
+      required: [_id, name, ownerId, memberIds, createdAt]
+      properties:
+        _id: { $ref: '#/components/schemas/ObjectId' }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 2000
+        ownerId: { $ref: '#/components/schemas/ObjectId' }
+        memberIds:
+          type: array
+          items: { $ref: '#/components/schemas/ObjectId' }
+        archived:
+          type: boolean
+          default: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Assignment:
+      type: object
+      required: [assigneeId]
+      properties:
+        assigneeId:
+          type: string
+          nullable: true
+          pattern: "^[0-9a-fA-F]{24}$"
+          description: "ID of a current project participant, or null to clear the assignment."
+    CommentInput:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    Comment:
+      type: object
+      required: [_id, text, authorId, createdAt]
+      properties:
+        _id: { $ref: '#/components/schemas/ObjectId' }
+        text:
+          type: string
+          maxLength: 1000
+        authorId: { $ref: '#/components/schemas/ObjectId' }
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ChecklistItem:
+      type: object
+      required: [_id, title, completed]
+      properties:
+        _id: { $ref: '#/components/schemas/ObjectId' }
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        completed:
+          type: boolean

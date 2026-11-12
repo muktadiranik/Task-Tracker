@@ -45,6 +45,29 @@ npm start
 
 Leave the app running. In a second terminal, run `curl -i http://127.0.0.1:3000/health` (`curl.exe` in PowerShell). Expect HTTP `200` and `{"status":"ok"}`.
 
+## Run the React frontend
+
+With MongoDB and the project’s `.env` configured, run these commands from the project root in PowerShell.
+
+```powershell
+npm.cmd ci
+npm.cmd run build
+npm.cmd start
+```
+
+Open [Task Tracker](http://127.0.0.1:3000/) and sign in with an existing account or create one. The app uses the configured API port.
+
+For frontend development, keep the API running and run `npm.cmd run dev` in a second terminal. Open the local Vite URL printed in that terminal. Vite forwards API requests to the backend.
+
+## Try the API in Swagger UI
+
+After starting the server, open [Swagger UI](http://127.0.0.1:3000/api-docs/). The page loads the [OpenAPI specification](openapi.yaml) and lets you run requests from your browser.
+
+1. Use **Try it out** on `POST /api/auth/register` if you need a local account.
+2. Run `POST /api/auth/login` with your email and password, then copy the `token` value from the response.
+3. Click **Authorize**, paste the token value into **bearerAuth**, then click **Authorize** again. Swagger UI adds the `Bearer` prefix.
+4. Try `GET /api/me/tasks` for your private tasks or `GET /api/projects` for your shared projects. Project operations use your existing project roles and membership.
+
 ## API at a glance
 
 | Method | Path | Successful response |
