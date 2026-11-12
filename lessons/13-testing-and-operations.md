@@ -39,7 +39,7 @@ Copy [`test/workspace.test.js`](../test/workspace.test.js) into the practice pro
 npm test
 ```
 
-The HTTP-only tests exercise validation and a simulated database failure. At the end of this lesson, expect four passing tests and two skipped integration tests with `MONGODB_TEST_URI` unset. Set the test URI as described in lesson 6 and expect six passing tests. The added integration test signs in two accounts and proves one cannot read, update, or delete the other's tasks. It also checks paging, counts, logout, and expiration against a real database. The finished workspace includes the [capstone's additional test](14-shared-projects.md#test-all-three-roles).
+The HTTP-only tests exercise validation and a simulated database failure. At the end of this lesson, expect four passing tests and two skipped integration tests with `MONGODB_TEST_URI` unset. Set the test URI as described in lesson 6 and expect six passing tests. The added integration test signs in two accounts and proves one cannot read, update, or delete the other's tasks. It also checks paging, counts, logout, and expiration against a real database. The finished workspace includes the [capstone tests](14-shared-projects.md#test-all-three-roles) and [workflow tests](15-everyday-project-workflows.md#run-the-integration-tests).
 
 Run the workspace tests directly for a narrower feedback loop. The built-in coverage report shows which source lines the selected tests ran.
 

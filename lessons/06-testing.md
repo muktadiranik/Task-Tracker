@@ -106,7 +106,7 @@ The tests start their own HTTP servers on available ports. The HTTP-only tests c
 npm test
 ```
 
-In the practice project, expect three passing tests and one skipped CRUD test if `MONGODB_TEST_URI` is unset. The CRUD **integration test** runs the HTTP routes against a real MongoDB server. It creates a uniquely named `task_tracker_test_…` database and drops that database when it finishes. If you're running this from the finished workspace, [the capstone](14-shared-projects.md#test-all-three-roles) gives the full suite's expected count.
+In the practice project, expect three passing tests and one skipped CRUD test if `MONGODB_TEST_URI` is unset. The CRUD **integration test** runs the HTTP routes against a real MongoDB server. It creates a uniquely named `task_tracker_test_…` database and drops that database when it finishes. If you're running this from the finished workspace, [lesson 15](15-everyday-project-workflows.md#run-the-integration-tests) gives the full suite's expected count.
 
 To enable the integration test, add the following line to your local `.env` and run `npm test` again. Expect four passing tests.
 

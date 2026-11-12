@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { createAuth } from "./auth.js";
+import { HttpError } from "./errors.js";
+import { listProjectTaskPage } from "./project-task-queries.js";
 import { createProjectsRouter } from "./projects.js";
 import { listTaskPage, taskStats } from "./task-queries.js";
 import { createTaskRouter } from "./tasks.js";
@@ -22,6 +24,7 @@ export async function createWorkspace(db) {
     projectTasks.createIndexes([
       { key: { projectId: 1, _id: -1 } },
       { key: { projectId: 1, completed: 1, _id: -1 } },
+      { key: { assigneeId: 1, _id: -1 } },
     ]),
   ]);
 
@@ -41,6 +44,26 @@ export async function createWorkspace(db) {
     users,
   }));
 
+  privateRoutes.get("/", async (_req, res) => {
+    const account = await users.findOne(
+      { _id: res.locals.session.userId },
+      { projection: { _id: 1, email: 1 } },
+    );
+    if (!account) throw new HttpError(404, "Account not found.");
+    res.json(account);
+  });
+  privateRoutes.get("/project-tasks", async (req, res) => {
+    const userId = res.locals.session.userId;
+    const activeProjects = await projects.find(
+      { memberIds: userId, archived: { $ne: true } },
+      { projection: { _id: 1 } },
+    ).toArray();
+    const page = await listProjectTaskPage(projectTasks, req.query, {
+      projectId: { $in: activeProjects.map((project) => project._id) },
+      assigneeId: userId,
+    });
+    res.json(page);
+  });
   privateRoutes.get("/stats", async (_req, res) => {
     res.json(await taskStats(tasks, res.locals.session.userId));
   });

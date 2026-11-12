@@ -1,7 +1,10 @@
 import { ObjectId } from "mongodb";
 import { HttpError } from "./errors.js";
 
-export async function listTaskPage(tasks, { completed, limit = "20", before }, scope) {
+export async function listTaskPage(tasks, { completed, limit = "20", before }, scope, {
+  direction = -1,
+  projection,
+} = {}) {
   if (typeof limit !== "string" || !/^(?:[1-9][0-9]?|100)$/.test(limit)) {
     throw new HttpError(400, "Limit must be an integer from 1 to 100.");
   }
@@ -17,11 +20,13 @@ export async function listTaskPage(tasks, { completed, limit = "20", before }, s
     if (typeof before !== "string" || !ObjectId.isValid(before)) {
       throw new HttpError(400, "Before must be a 24-character task ID.");
     }
-    filter._id = { $lt: new ObjectId(before) };
+    const comparison = direction === 1 ? "$gt" : "$lt";
+    filter._id = { [comparison]: new ObjectId(before) };
   }
 
   const pageSize = Number(limit);
-  const items = await tasks.find(filter).sort({ _id: -1 }).limit(pageSize + 1).toArray();
+  const items = await tasks.find(filter, { projection }).sort({ _id: direction })
+    .limit(pageSize + 1).toArray();
   const hasMore = items.length > pageSize;
   if (hasMore) {
     items.pop();

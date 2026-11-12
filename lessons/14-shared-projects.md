@@ -13,11 +13,11 @@ A signed-in user can create a project and becomes its owner. A request without a
 
 ## Create `src/projects.js`
 
-Copy [`src/projects.js`](../src/projects.js) into your practice project. Read the router in this order.
+Copy [`src/projects.js`](../src/projects.js), [`src/project-task-fields.js`](../src/project-task-fields.js), [`src/project-task-queries.js`](../src/project-task-queries.js), and [`src/task-collaboration.js`](../src/task-collaboration.js) into your practice project. Start by reading the core project routes. Lesson 15 walks through the task fields, filters, and collaboration routes in the supporting files.
 
 1. **Create and list projects.** The server takes the owner ID from the session and adds it to `memberIds`, the project's roster. A project list queries that array for the signed-in user's ID.
 2. **Load the project.** The `/:projectId` middleware checks the ID and queries for the project and the current user's membership together. It puts the result in `res.locals.project` for the routes below it.
-3. **Add a member.** The owner supplies an existing account's ID. The database update includes both the project ID and the owner ID. MongoDB's `$addToSet` updates the project document without adding a duplicate if a request is retried. This capstone uses an add-only roster. [MongoDB `$addToSet`](https://www.mongodb.com/docs/manual/reference/operator/update/addtoset/)
+3. **Add a member.** The owner supplies an existing account's ID. The database update includes both the project ID and the owner ID. MongoDB's `$addToSet` updates the project document without adding a duplicate if a request is retried. [MongoDB `$addToSet`](https://www.mongodb.com/docs/manual/reference/operator/update/addtoset/)
 4. **Assign a task.** Send an `assigneeId` from the roster, including the owner if desired. Send `null` to clear the assignment. The server updates a task only when both its task ID and its `projectId` match. An unassigned task has no `assigneeId` field.
 5. **Reuse task CRUD.** The router from lesson 11 applies `projectId` to all project task operations. The capstone passes `requireProjectOwner` as `authorizeDelete`, so the shared router checks the owner's role before deleting. A separate assignment endpoint handles its own validation.
 
@@ -75,4 +75,6 @@ Set `MONGODB_TEST_URI` as in [lesson 6](06-testing.md#add-and-run-the-automated-
 node --env-file-if-exists=.env --test test/projects.test.js
 ```
 
-Expect a passing parent test with three passing subtests for the owner, member, and outsider. Run `npm test` to check the earlier lessons as well. The full suite reports ten passes including the three role subtests.
+Expect a passing parent test with three passing subtests for the owner, member, and outsider. In your practice project, `npm test` reports ten passes at this stage, including the three role subtests. The finished workspace also runs the tests from lesson 15.
+
+[Continue to everyday project workflows](15-everyday-project-workflows.md)

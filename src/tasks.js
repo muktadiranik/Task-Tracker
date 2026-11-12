@@ -19,23 +19,25 @@ export function createTaskRouter(tasks, {
   taskFilter = () => ({}),
   listTasks = listTutorialTasks,
   authorizeDelete = (_req, _res, next) => next(),
+  validateBody = validateTaskBody,
+  presentTask = (task) => task,
 } = {}) {
   const router = Router();
 
   router.post("/", async (req, res) => {
-    const input = validateTaskBody(req.body, { requireTitle: true });
+    const input = validateBody(req.body, { requireTitle: true });
     const now = new Date();
     const task = {
       ...taskFilter(res),
-      title: input.title,
-      completed: input.completed ?? false,
+      completed: false,
+      ...input,
       createdAt: now,
       updatedAt: now,
     };
 
     const { insertedId } = await tasks.insertOne(task);
     res.location(`${basePath(res)}/${insertedId.toHexString()}`);
-    res.status(201).json({ ...task, _id: insertedId });
+    res.status(201).json(presentTask({ ...task, _id: insertedId }));
   });
 
   router.get("/", async (req, res) => {
@@ -48,12 +50,12 @@ export function createTaskRouter(tasks, {
     if (!task) {
       throw new HttpError(404, "Task not found.");
     }
-    res.status(200).json(task);
+    res.status(200).json(presentTask(task));
   });
 
   router.patch("/:id", async (req, res) => {
     const _id = parseObjectId(req.params.id, "Task ID");
-    const changes = validateTaskBody(req.body);
+    const changes = validateBody(req.body);
     const task = await tasks.findOneAndUpdate(
       { _id, ...taskFilter(res) },
       { $set: changes, $currentDate: { updatedAt: true } },
@@ -62,7 +64,7 @@ export function createTaskRouter(tasks, {
     if (!task) {
       throw new HttpError(404, "Task not found.");
     }
-    res.status(200).json(task);
+    res.status(200).json(presentTask(task));
   });
 
   router.delete("/:id", authorizeDelete, async (req, res) => {
